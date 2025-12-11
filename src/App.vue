@@ -73,65 +73,82 @@
 
     <!-- 主显示区域 -->
     <div class="main-display">
-      <!-- 左侧：流水线寄存器状态 -->
-      <div class="section pipeline-section">
-        <h2>流水线寄存器状态</h2>
-        <div class="pipeline-stages">
-          <div class="pipeline-stage" :class="{ active: currentPhase >= 0 }">
-            <h3>Fetch (取指)</h3>
-            <div v-if="pipelineState.fetch" class="stage-content">
-              <p><strong>icode:</strong> {{ getICodeName(pipelineState.fetch.icode) }}</p>
-              <p><strong>ifun:</strong> {{ pipelineState.fetch.ifun }}</p>
-              <p><strong>rA:</strong> {{ getRegName(pipelineState.fetch.rA) }}</p>
-              <p><strong>rB:</strong> {{ getRegName(pipelineState.fetch.rB) }}</p>
-              <p><strong>valC:</strong> 0x{{ formatHex(pipelineState.fetch.valC, 8) }}</p>
-              <p><strong>valP:</strong> 0x{{ formatHex(pipelineState.fetch.valP, 8) }}</p>
-            </div>
-          </div>
+      <!-- 左侧：流水线寄存器阶段 -->
+<div class="section pipeline-section">
+  <h2>流水线寄存器阶段</h2>
+  <div class="pipeline-stages">
 
-          <div class="pipeline-stage" :class="{ active: currentPhase >= 1 }">
-            <h3>Decode (译码)</h3>
-            <div v-if="pipelineState.decode" class="stage-content">
-              <p><strong>srcA:</strong> {{ getRegName(pipelineState.decode.srcA) }}</p>
-              <p><strong>srcB:</strong> {{ getRegName(pipelineState.decode.srcB) }}</p>
-              <p><strong>dstE:</strong> {{ getRegName(pipelineState.decode.dstE) }}</p>
-              <p><strong>dstM:</strong> {{ getRegName(pipelineState.decode.dstM) }}</p>
-              <p><strong>valA:</strong> 0x{{ formatHex(pipelineState.decode.valA, 8) }}</p>
-              <p><strong>valB:</strong> 0x{{ formatHex(pipelineState.decode.valB, 8) }}</p>
-            </div>
-          </div>
-
-          <div class="pipeline-stage" :class="{ active: currentPhase >= 2 }">
-            <h3>Execute (执行)</h3>
-            <div v-if="pipelineState.execute" class="stage-content">
-              <p><strong>valE:</strong> 0x{{ formatHex(pipelineState.execute.valE, 8) }}</p>
-              <p><strong>Cnd:</strong> {{ pipelineState.execute.Cnd }}</p>
-              <p><strong>aluA:</strong> 0x{{ formatHex(pipelineState.aluA, 8) }}</p>
-              <p><strong>aluB:</strong> 0x{{ formatHex(pipelineState.aluB, 8) }}</p>
-              <p><strong>alufun:</strong> {{ getALUFunName(pipelineState.alufun) }}</p>
-            </div>
-          </div>
-
-          <div class="pipeline-stage" :class="{ active: currentPhase >= 3 }">
-            <h3>Memory (访存)</h3>
-            <div v-if="pipelineState.memory" class="stage-content">
-              <p><strong>valM:</strong> 0x{{ formatHex(pipelineState.memory.valM, 8) }}</p>
-              <p><strong>mem_addr:</strong> 0x{{ formatHex(pipelineState.memAddr, 8) }}</p>
-              <p><strong>mem_data:</strong> 0x{{ formatHex(pipelineState.memData, 8) }}</p>
-              <p><strong>read:</strong> {{ pipelineState.memRead }}</p>
-              <p><strong>write:</strong> {{ pipelineState.memWrite }}</p>
-            </div>
-          </div>
-
-          <div class="pipeline-stage" :class="{ active: currentPhase >= 4 }">
-            <h3>Write Back (写回)</h3>
-            <div v-if="pipelineState.writeback" class="stage-content">
-              <p><strong>dstE:</strong> {{ getRegName(pipelineState.decode.dstE) }} ← 0x{{ formatHex(pipelineState.execute.valE, 8) }}</p>
-              <p><strong>dstM:</strong> {{ getRegName(pipelineState.decode.dstM) }} ← 0x{{ formatHex(pipelineState.memory.valM, 8) }}</p>
-            </div>
-          </div>
-        </div>
+    <!-- Fetch -->
+    <div class="pipeline-stage" :class="{ active: currentPhase >= 0 }">
+      <h3>Fetch (取指)</h3>
+      <div v-if="pipelineState.fetch" class="stage-content">
+        <p><strong>icode:</strong> {{ icodeDisplay(pipelineState.fetch.icode) }}</p>
+        <p><strong>ifun:</strong> {{ pipelineState.fetch.ifun }}</p>
+        <p><strong>rA:</strong> {{ regDisplay(pipelineState.fetch.rA) }}</p>
+        <p><strong>rB:</strong> {{ regDisplay(pipelineState.fetch.rB) }}</p>
+        <p><strong>valC:</strong> 0x{{ formatHex(pipelineState.fetch.valC, 8) }}</p>
+        <p><strong>valP:</strong> 0x{{ formatHex(pipelineState.fetch.valP, 8) }}</p>
       </div>
+    </div>
+
+    <!-- Decode -->
+    <div class="pipeline-stage" :class="{ active: currentPhase >= 1 }">
+      <h3>Decode (译码)</h3>
+      <div v-if="pipelineState.decode" class="stage-content">
+        <p><strong>srcA:</strong> {{ regDisplay(pipelineState.decode.srcA) }}</p>
+        <p><strong>srcB:</strong> {{ regDisplay(pipelineState.decode.srcB) }}</p>
+        <p><strong>dstE:</strong> {{ regDisplay(pipelineState.decode.dstE) }}</p>
+        <p><strong>dstM:</strong> {{ regDisplay(pipelineState.decode.dstM) }}</p>
+        <p><strong>valA:</strong> 0x{{ formatHex(pipelineState.decode.valA, 8) }}</p>
+        <p><strong>valB:</strong> 0x{{ formatHex(pipelineState.decode.valB, 8) }}</p>
+      </div>
+    </div>
+
+    <!-- Execute -->
+    <div class="pipeline-stage" :class="{ active: currentPhase >= 2 }">
+      <h3>Execute (执行)</h3>
+      <div v-if="pipelineState.execute" class="stage-content">
+        <p><strong>valE:</strong> 0x{{ formatHex(pipelineState.execute.valE, 8) }}</p>
+        <p><strong>Cnd:</strong> {{ pipelineState.execute.Cnd }}</p>
+        <p><strong>aluA:</strong> 0x{{ formatHex(pipelineState.aluA, 8) }}</p>
+        <p><strong>aluB:</strong> 0x{{ formatHex(pipelineState.aluB, 8) }}</p>
+        <p><strong>alufun:</strong> {{ pipelineState.alufun }} ({{ getALUFunName(pipelineState.alufun) }})</p>
+      </div>
+    </div>
+
+    <!-- Memory -->
+    <div class="pipeline-stage" :class="{ active: currentPhase >= 3 }">
+      <h3>Memory (访存)</h3>
+      <div v-if="pipelineState.memory" class="stage-content">
+        <p><strong>valM:</strong> 0x{{ formatHex(pipelineState.memory.valM, 8) }}</p>
+        <p><strong>mem_addr:</strong> 0x{{ formatHex(pipelineState.memAddr, 8) }}</p>
+        <p><strong>mem_data:</strong> 0x{{ formatHex(pipelineState.memData, 8) }}</p>
+        <p><strong>read:</strong> {{ pipelineState.memRead }}</p>
+        <p><strong>write:</strong> {{ pipelineState.memWrite }}</p>
+      </div>
+    </div>
+
+    <!-- Write Back -->
+    <div class="pipeline-stage" :class="{ active: currentPhase >= 4 }">
+      <h3>Write Back (写回)</h3>
+      <div v-if="pipelineState.writeback" class="stage-content">
+        <p><strong>dstE:</strong> {{ regDisplay(pipelineState.decode.dstE) }} ← 0x{{ formatHex(pipelineState.execute.valE, 8) }}</p>
+        <p><strong>dstM:</strong> {{ regDisplay(pipelineState.decode.dstM) }} ← 0x{{ formatHex(pipelineState.memory.valM, 8) }}</p>
+      </div>
+    </div>
+
+    <!-- PC Update (新增) -->
+    <div class="pipeline-stage" :class="{ active: currentPhase >= 5 }">
+      <h3>PC Update (更新PC)</h3>
+      <div v-if="pipelineState.pcUpdate" class="stage-content">
+        <p><strong>newPC:</strong> 0x{{ formatHex(pipelineState.pcUpdate.newPC, 8) }}</p>
+        <p><strong>predPC:</strong> 0x{{ formatHex(pipelineState.pcUpdate.predPC, 8) }}</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 
       <!-- 中间：只保留内存指令视图 -->
       <div class="section instruction-section">
@@ -278,10 +295,24 @@ export default {
       
       // 指令名称映射
       icodeNames: [
-        'halt', 'nop', 'rrmovq', 'irmovq', 'rmmovq', 'mrmovq',
-        'addq', 'subq', 'andq', 'xorq', 'jmp', 'call', 'ret',
-        'pushq', 'popq', 'prt'
+      'halt',   // 0
+      'nop',    // 1
+      'rrmovq', // 2
+      'irmovq', // 3
+      'rmmovq', // 4
+      'mrmovq', // 5
+      'OPq',    // 6 （真正解释需看 ifun）
+      'jXX',    // 7
+      'call',   // 8
+      'ret',    // 9
+      'pushq',  // 10
+      'popq',   // 11
+      'prt',    // 12
+      'unused', // 13
+      'unused', // 14
+      'unused'  // 15
       ],
+
       
       // ALU操作名称
       aluFunNames: ['add', 'sub', 'and', 'xor'],
@@ -351,7 +382,14 @@ export default {
       }
       return value.toString(16).padStart(digits, '0');
     },
-    
+    regDisplay(id) {
+      return `${id} (${this.regNames[id]})`;
+    },
+
+    icodeDisplay(code) {
+      return `${code} (${this.icodeNames[code]})`;
+    },
+
     // 触发文件上传
     triggerFileUpload() {
       this.$refs.fileInput.click();
