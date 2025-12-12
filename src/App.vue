@@ -202,7 +202,7 @@
           <div class="register-grid">
             <div v-for="reg in registers" :key="reg.name" class="register-item">
               <span class="reg-name">{{ reg.name }}</span>
-              <span class="reg-value">0x{{ formatHex(reg.value, 6) }}</span>
+              <span class="reg-value">0x{{ formatHex(reg.value) }}</span>
               <span v-if="reg.changed" class="reg-changed">↻</span>
             </div>
           </div>
@@ -439,18 +439,18 @@ export default {
     },
 
     // 格式化十六进制 - 支持不同的位数
-    formatHex(value, digits) {
-      if (typeof value === 'bigint') {
-        // 对于寄存器值显示6位，其他保持原样
-        if (digits === 6) {
-          // 取低6位十六进制数
-          const hexStr = value.toString(16);
-          return hexStr.slice(-6).padStart(6, '0');
-        }
-        return value.toString(16).padStart(digits, '0');
+    formatHex(value, digits = 16) {
+      if (value === undefined || value === null) return "0".repeat(digits);
+
+      // BigInt 情况
+      if (typeof value === "bigint") {
+        return value.toString(16).padStart(digits, "0");
       }
-      return value.toString(16).padStart(digits, '0');
+
+      // Number 情况
+      return Number(value).toString(16).padStart(digits, "0");
     },
+
     regDisplay(id) {
       return `${id} (${this.regNames[id]})`;
     },
@@ -1670,6 +1670,42 @@ h1 {
 }
 
 /* 进度条区域 - 修复圆圈滑块 */
+/* 隐藏原生滑块（核心） */
+.progress-bar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+
+.progress-bar::-moz-range-thumb {
+  appearance: none;
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+
+/* 自定义圆圈放最上层 */
+.progress-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;     
+  pointer-events: none; /* 不干扰拖动 */
+}
+
+.thumb-circle {
+  width: 32px;
+  height: 32px;
+  background: white;
+  border-radius: 50%;
+  border: 3px solid #667eea;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 51;     
+}
+
+
 .progress-section {
   background: white;
   padding: 20px;
