@@ -139,12 +139,21 @@
 
     <!-- PC Update (新增) -->
     <div class="pipeline-stage" :class="{ active: currentPhase >= 5 }">
-      <h3>PC Update (更新PC)</h3>
+      <h3>PC Update (更新 PC)</h3>
+
       <div v-if="pipelineState.pcUpdate" class="stage-content">
-        <p><strong>newPC:</strong> 0x{{ formatHex(pipelineState.pcUpdate.newPC, 8) }}</p>
+        <p>
+          <strong>newPC:</strong>
+          0x{{ formatHex(pipelineState.pcUpdate.newPC, 8) }}
+          <span v-if="pipelineState.pcUpdate.returnAddr !== null">
+            （返回地址: 0x{{ formatHex(pipelineState.pcUpdate.returnAddr, 8) }}）
+          </span>
+        </p>
+
         <p><strong>predPC:</strong> 0x{{ formatHex(pipelineState.pcUpdate.predPC, 8) }}</p>
       </div>
     </div>
+
 
   </div>
 </div>
@@ -299,7 +308,7 @@ export default {
       'nop',    // 1
       'rrmovq', // 2
       'irmovq', // 3
-      'rmmovq', // 4
+      'rmmovq', // 4 
       'mrmovq', // 5
       'OPq',    // 6 （真正解释需看 ifun）
       'jXX',    // 7
@@ -1056,40 +1065,55 @@ export default {
       const F = this.pipelineState.fetch;
       const E = this.pipelineState.execute;
       const M = this.pipelineState.memory;
-      
-      // 根据Y86规范计算新PC
-      let newPC = F.valP; // 默认顺序执行
-      
+
+      // 默认 newPC 为顺序执行
+      let newPC = F.valP;
+
+      // 返回地址（call 时是 valP；ret 时是从栈取出的 valM）
+      let returnAddr = null;
+
+      // 根据不同的指令类型更新 PC
       switch (F.icode) {
-        case 7: // jmp (IJXX)
+        case 7: // jXX
           if (E.Cnd) {
             newPC = Number(F.valC);
           }
           break;
-        case 8: // call (ICALL)
+
+        case 8: // call
+          // 跳转目标
           newPC = Number(F.valC);
+          // 返回地址 = 下一条指令的地址
+          returnAddr = F.valP;
           break;
-        case 9: // ret (IRET)
+
+        case 9: // ret
+          // ret 的返回地址 = 从栈中弹出的值
+          returnAddr = M.valM;
           newPC = Number(M.valM);
           break;
-        case 0: // halt (IHALT)
+
+        case 0: // halt
           this.cpuState.stat = 1; // SHLT
           break;
       }
-      
-      // 更新PC
+
+      // 更新 PC
       this.cpuState.pc = newPC;
-      
-      // 检查prt指令并输出
-      if (F.icode === 12 && F.ifun === 0) {
-        console.log(`prt输出: ${this.pipelineState.decode.valA}`);
-      }
-      
-      // 只有halt指令才会设置状态为SHLT，其他指令保持SAOK
+
+      // 记录 PC Update 阶段信息
+      this.pipelineState.pcUpdate = {
+        newPC,
+        predPC: F.valP,     // 顺序执行的下一个地址
+        returnAddr          // 仅 call/ret 时有意义
+      };
+
+      // 非 halt 指令保持状态为 SAOK
       if (F.icode !== 0) {
-        this.cpuState.stat = 0; // SAOK
+        this.cpuState.stat = 0;
       }
     },
+
     
     // 保存当前状态到历史记录
     saveCurrentState() {
