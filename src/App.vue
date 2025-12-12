@@ -139,20 +139,25 @@
 
     <!-- PC Update (新增) -->
     <div class="pipeline-stage" :class="{ active: currentPhase >= 5 }">
-      <h3>PC Update (更新 PC)</h3>
+      <h3>PC Update (PC 更新)</h3>
 
       <div v-if="pipelineState.pcUpdate" class="stage-content">
         <p>
           <strong>newPC:</strong>
-          0x{{ formatHex(pipelineState.pcUpdate.newPC, 8) }}
-          <span v-if="pipelineState.pcUpdate.returnAddr !== null">
-            （返回地址: 0x{{ formatHex(pipelineState.pcUpdate.returnAddr, 8) }}）
+          <span v-if="pipelineState.pcUpdate.newPC !== undefined">
+            0x{{ formatHex(pipelineState.pcUpdate.newPC, 8) }}
+            ({{ pipelineState.pcUpdate.source || "unknown" }})
           </span>
+          <span v-else>--------</span>
         </p>
 
-        <p><strong>predPC:</strong> 0x{{ formatHex(pipelineState.pcUpdate.predPC, 8) }}</p>
+        <p>
+          <strong>状态码:</strong>
+          {{ pipelineState.pcUpdate.statName || "SAOK" }}
+        </p>
       </div>
     </div>
+
 
 
   </div>
@@ -243,6 +248,14 @@
 // JavaScript代码保持不变
 export default {
   name: 'Y86Simulator',
+  mounted() {
+    window.addEventListener('keydown', this.handleKey);
+  },
+
+  beforeUnmount() {
+    window.removeEventListener('keydown', this.handleKey);
+  },
+
   data() {
     return {
       // 模拟器状态
@@ -376,8 +389,55 @@ export default {
       return Math.min(100, (this.currentStep / this.totalSteps) * 100);
     }
   },
-  
+
   methods: {
+    handleKey(e) {
+      // 忽略输入框和文本框中的按键事件
+      const tag = e.target.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+
+      // I → Next Instruction
+      if (e.key === 'i' || e.key === 'I') {
+        if (this.isLoaded && !this.isRunning && !this.isFinished) {
+          this.singleStep();
+        }
+      }
+
+      // P → Next Phase
+      if (e.key === 'p' || e.key === 'P') {
+        if (this.isLoaded && 
+            !this.isRunning && 
+            !this.isFinished && 
+            this.showPhaseControls) 
+        {
+          this.nextPhase();
+        }
+      }
+
+      // R → Run / Stop
+      if (e.key === 'r' || e.key === 'R') {
+        if (this.isLoaded) {
+          this.toggleRun();
+        }
+      }
+
+      // ←（Left Arrow）→ 回到上一步（如果需要你可以启用）
+      if (e.key === 'ArrowLeft') {
+        if (this.currentStep > 0) {
+          this.currentStep--;
+          this.jumpToStep();
+        }
+      }
+
+      // →（Right Arrow）→ 前进一步
+      if (e.key === 'ArrowRight') {
+        if (this.currentStep < this.totalSteps) {
+          this.currentStep++;
+          this.jumpToStep();
+        }
+      }
+    },
+
     // 格式化十六进制 - 支持不同的位数
     formatHex(value, digits) {
       if (typeof value === 'bigint') {
@@ -1060,59 +1120,62 @@ export default {
     
     // PC更新阶段
     pcUpdateStage() {
-      if (!this.pipelineState.fetch || !this.pipelineState.execute || !this.pipelineState.memory) return;
-      
+      if (!this.pipelineState.fetch || !this.pipelineState.execute || !this.pipelineState.memory)
+        return;
+
       const F = this.pipelineState.fetch;
       const E = this.pipelineState.execute;
       const M = this.pipelineState.memory;
 
-      // 默认 newPC 为顺序执行
-      let newPC = F.valP;
-
-      // 返回地址（call 时是 valP；ret 时是从栈取出的 valM）
+      let newPC = F.valP;   // 默认顺序执行
+      let source = "valP";  // 默认来源
       let returnAddr = null;
 
-      // 根据不同的指令类型更新 PC
+      // ---- 根据指令类型更新 newPC 与来源 ----
       switch (F.icode) {
+
         case 7: // jXX
           if (E.Cnd) {
             newPC = Number(F.valC);
+            source = "valC";
           }
           break;
 
         case 8: // call
-          // 跳转目标
           newPC = Number(F.valC);
-          // 返回地址 = 下一条指令的地址
+          source = "valC";
           returnAddr = F.valP;
           break;
 
         case 9: // ret
-          // ret 的返回地址 = 从栈中弹出的值
-          returnAddr = M.valM;
           newPC = Number(M.valM);
+          source = "valM";
+          returnAddr = M.valM;
           break;
 
         case 0: // halt
           this.cpuState.stat = 1; // SHLT
+          newPC = F.valP;
+          source = "valP";
           break;
       }
 
       // 更新 PC
       this.cpuState.pc = newPC;
 
-      // 记录 PC Update 阶段信息
+      // ------ NEW：使用状态码取代 predPC ------
+      const statCode = this.cpuState.stat;   
+      const statName = this.getStatName(statCode);
+
       this.pipelineState.pcUpdate = {
         newPC,
-        predPC: F.valP,     // 顺序执行的下一个地址
-        returnAddr          // 仅 call/ret 时有意义
+        source,        // newPC 的来源 (valP / valC / ret / halt)
+        returnAddr,    // call/ret 的返回地址
+        statCode,      // 状态码数值（0/1/2/3）
+        statName       // 状态码名称（SAOK / SHLT / SADR / SINS）
       };
-
-      // 非 halt 指令保持状态为 SAOK
-      if (F.icode !== 0) {
-        this.cpuState.stat = 0;
-      }
     },
+
 
     
     // 保存当前状态到历史记录
